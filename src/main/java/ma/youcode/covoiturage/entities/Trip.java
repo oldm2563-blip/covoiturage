@@ -23,10 +23,15 @@ public class Trip {
     @OneToMany(mappedBy = "trip",
             cascade = CascadeType.ALL,
             orphanRemoval = true)
+    @OrderBy("orderIndex ASC")
     private List<Stop> stops = new ArrayList<>();
 
     @Column(name = "seats_Offered" , nullable = false)
     private int seatsOffered;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "driver_id", nullable = false)
+    private Driver driver;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "vehicle_id", nullable = false)

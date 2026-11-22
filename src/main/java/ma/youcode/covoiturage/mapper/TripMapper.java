@@ -10,8 +10,8 @@ import org.mapstruct.Mapping;
 public interface TripMapper {
 
     @Mapping(target = "vehicleId", source = "vehicle.id")
+    @Mapping(target = "availableSeats", ignore = true)
     TripResponseDto toResponse(Trip trip);
-
 
     @Mapping(target = "vehicle", ignore = true)
     @Mapping(target = "stops", ignore = true)

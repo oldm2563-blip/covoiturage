@@ -13,6 +13,11 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiError> handleForbidden(ForbiddenException ex){
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), List.of());
+    }
+
     @ExceptionHandler(ResourcesNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(ResourcesNotFoundException ex){
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), List.of());

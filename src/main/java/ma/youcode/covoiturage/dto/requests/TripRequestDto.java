@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 public record TripRequestDto(
+        @NotNull Long driverId,
         @NotNull Long vehicleId,
         @Min(1) int seatsOffered,
         @NotEmpty List<@Valid StopRequestDto> stops

@@ -1,6 +1,7 @@
 package ma.youcode.covoiturage.services;
 
 import lombok.RequiredArgsConstructor;
+import ma.youcode.covoiturage.common.exception.BusinessRuleException;
 import ma.youcode.covoiturage.common.exception.LicenseCodeAlreadyExistsException;
 import ma.youcode.covoiturage.common.exception.ResourcesNotFoundException;
 import ma.youcode.covoiturage.dto.requests.VehicleRequestDto;
@@ -10,6 +11,7 @@ import ma.youcode.covoiturage.entities.Driver;
 import ma.youcode.covoiturage.entities.Vehicle;
 import ma.youcode.covoiturage.mapper.VehicleMapper;
 import ma.youcode.covoiturage.repositories.DriverRepository;
+import ma.youcode.covoiturage.repositories.TripRepository;
 import ma.youcode.covoiturage.repositories.VehicalRepository;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +24,7 @@ public class VehicalService {
     private final VehicalRepository vehicalRepository;
     private final VehicleMapper vehicleMapper;
     private final DriverRepository driverRepository;
+    private final TripRepository tripRepository;
 
     public VehicleResponseDto addVehicle(VehicleRequestDto dto){
 
@@ -77,8 +80,16 @@ public class VehicalService {
     }
 
     public void deleteVehicle(Long id) {
+
         Vehicle vehicle = vehicalRepository.findById(id)
-                .orElseThrow(() -> new ResourcesNotFoundException("Vehicle not found"));
+                .orElseThrow(() ->
+                        new ResourcesNotFoundException("Vehicle not found"));
+
+        if (tripRepository.existsByVehicle_Id(id)) {
+            throw new BusinessRuleException(
+                    "Cannot delete a vehicle that is associated with trips"
+            );
+        }
 
         vehicalRepository.delete(vehicle);
     }
