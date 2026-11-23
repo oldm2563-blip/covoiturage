@@ -83,4 +83,5 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
             @Param("activeStatuses") List<Status> activeStatuses,
             @Param("now") LocalDateTime now
     );
+
 }

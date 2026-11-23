@@ -1,6 +1,7 @@
 package ma.youcode.covoiturage.services;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ma.youcode.covoiturage.common.exception.BusinessRuleException;
 import ma.youcode.covoiturage.common.exception.ForbiddenException;
 import ma.youcode.covoiturage.common.exception.LicenseCodeAlreadyExistsException;
@@ -31,6 +32,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TripService {
@@ -55,13 +57,15 @@ public class TripService {
                 .orElseThrow(() -> new ResourcesNotFoundException("Couldn't find a vehicle with this id :" + dto.vehicleId()));
 
         if (vehicle.getDriver().getId() != driver.getId()) {
-            throw new ForbiddenException(
-                    "You cannot publish a trip using another driver's vehicle"
-            );
+            String reason = "You cannot publish a trip using another driver's vehicle";
+            log.warn("Rule refused: {}", reason);
+            throw new ForbiddenException(reason);
         }
 
         if (dto.stops().size() < 2){
-            throw new BusinessRuleException("there should be a minimum of 2 Stops");
+            String reason = "there should be a minimum of 2 Stops";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         Set<String> cities = dto.stops()
@@ -71,10 +75,14 @@ public class TripService {
                 .collect(Collectors.toSet());
 
         if (cities.size() != dto.stops().size()) {
-            throw new BusinessRuleException("Stop cities must be unique");
+            String reason = "Stop cities must be unique";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
         if (dto.stops().get(0).price().compareTo(BigDecimal.ZERO) != 0){
-            throw new BusinessRuleException("The first stop price must be 0");
+            String reason = "The first stop price must be 0";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         for (int i = 1; i < dto.stops().size() ; i++){
@@ -83,7 +91,9 @@ public class TripService {
             LocalDateTime current = dto.stops().get(i).dateTime();
 
             if(!current.isAfter(previous)){
-                throw new BusinessRuleException("Stop times must be in strictly increasing order");
+                String reason = "Stop times must be in strictly increasing order";
+                log.warn("Rule refused: {}", reason);
+                throw new BusinessRuleException(reason);
             }
         }
 
@@ -93,20 +103,28 @@ public class TripService {
             BigDecimal current = dto.stops().get(i).price();
 
             if(current.compareTo(previous) <= 0 ){
-                throw new BusinessRuleException("Price should always continue to rise we dont like free rides");
+                String reason = "Price should always continue to rise we dont like free rides";
+                log.warn("Rule refused: {}", reason);
+                throw new BusinessRuleException(reason);
             }
         }
 
         if (!dto.stops().get(0).dateTime().isAfter(LocalDateTime.now())) {
-            throw new BusinessRuleException("The departure date should be in the future");
+            String reason = "The departure date should be in the future";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         if (dto.seatsOffered() < 1){
-            throw new BusinessRuleException("there should be at least 1 seat");
+            String reason = "there should be at least 1 seat";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         if (dto.seatsOffered() > vehicle.getCapacity()){
-            throw new BusinessRuleException("you can't go over the capacity of the vehicle and they cant go in the trunk");
+            String reason = "you can't go over the capacity of the vehicle and they cant go in the trunk";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         Trip trip = tripMapper.toEntity(dto);
@@ -126,6 +144,7 @@ public class TripService {
 
         Trip created = tripRepository.save(trip);
 
+        log.info("Trip {} published by driver {}: {} stops, {} seats offered", created.getId(), driver.getId(), dto.stops().size(), dto.seatsOffered());
         return toResponseWithAvailableSeats(created);
     }
 
@@ -194,15 +213,17 @@ public class TripService {
 
         // Only the owner can cancel the trip
         if (trip.getDriver().getId() != driverId) {
-            throw new ForbiddenException(
-                    "You can only cancel your own trips");
+            String reason = "You can only cancel your own trips";
+            log.warn("Rule refused: {}", reason);
+            throw new ForbiddenException(reason);
         }
 
         // Only published or full trips can be cancelled
         if (trip.getStatus() != Status.PUBLIE
                 && trip.getStatus() != Status.COMPLET) {
-            throw new BusinessRuleException(
-                    "This trip cannot be cancelled");
+            String reason = "This trip cannot be cancelled";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         // Retrieve all bookings belonging to this trip
@@ -222,6 +243,7 @@ public class TripService {
         trip.setStatus(Status.ANNULE);
         Trip savedTrip = tripRepository.save(trip);
 
+        log.info("Trip {} cancelled by driver {} together with its active bookings", tripId, driverId);
         return toResponseWithAvailableSeats(savedTrip);
     }
 
@@ -234,15 +256,17 @@ public class TripService {
 
         // Only the owner can finish the trip
         if (trip.getDriver().getId() != driverId) {
-            throw new ForbiddenException(
-                    "You can only finish your own trips");
+            String reason = "You can only finish your own trips";
+            log.warn("Rule refused: {}", reason);
+            throw new ForbiddenException(reason);
         }
 
         // Only active trips can be finished
         if (trip.getStatus() != Status.PUBLIE
                 && trip.getStatus() != Status.COMPLET) {
-            throw new BusinessRuleException(
-                    "This trip cannot be finished");
+            String reason = "This trip cannot be finished";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         // Departure must have already happened
@@ -251,13 +275,15 @@ public class TripService {
                 .getDateTime();
 
         if (LocalDateTime.now().isBefore(departureTime)) {
-            throw new BusinessRuleException(
-                    "You cannot finish a trip before its departure");
+            String reason = "You cannot finish a trip before its departure";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         trip.setStatus(Status.TERMINE);
         Trip savedTrip = tripRepository.save(trip);
 
+        log.info("Trip {} finished by driver {}", tripId, driverId);
         return toResponseWithAvailableSeats(savedTrip);
     }
 }

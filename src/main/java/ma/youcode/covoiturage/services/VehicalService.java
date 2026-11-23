@@ -1,6 +1,7 @@
 package ma.youcode.covoiturage.services;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ma.youcode.covoiturage.common.exception.BusinessRuleException;
 import ma.youcode.covoiturage.common.exception.LicenseCodeAlreadyExistsException;
 import ma.youcode.covoiturage.common.exception.ResourcesNotFoundException;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class VehicalService {
@@ -29,10 +31,18 @@ public class VehicalService {
     public VehicleResponseDto addVehicle(VehicleRequestDto dto){
 
         if (vehicalRepository.existsByRegistrationNumber(dto.registrationNumber()))
-            throw new LicenseCodeAlreadyExistsException("registration Number already Exists in the Database");
+        {
+            String reason = "registration Number already Exists in the Database";
+            log.warn("Rule refused: {}", reason);
+            throw new LicenseCodeAlreadyExistsException(reason);
+        }
 
         if (dto.capacity() < 1 || dto.capacity() > 8)
-            throw new LicenseCodeAlreadyExistsException("Capacity Should be between 1 to 8");
+        {
+            String reason = "Capacity Should be between 1 to 8";
+            log.warn("Rule refused: {}", reason);
+            throw new LicenseCodeAlreadyExistsException(reason);
+        }
 
         Driver driver = driverRepository.findById(dto.driverId())
                 .orElseThrow(() -> new ResourcesNotFoundException("Driver not found"));
@@ -41,6 +51,7 @@ public class VehicalService {
         vehicle.setDriver(driver);
 
         Vehicle created = vehicalRepository.save(vehicle);
+        log.info("Vehicle {} added for driver {}", created.getId(), driver.getId());
         return vehicleMapper.toResponse(created);
     }
 
@@ -50,15 +61,24 @@ public class VehicalService {
                 .orElseThrow(() -> new ResourcesNotFoundException("Couldn't find a vehicle with this id :" + id));
 
         if (dto.registrationNumber() != null && !dto.registrationNumber().equals(vehicle.getRegistrationNumber()) && vehicalRepository.existsByRegistrationNumber(dto.registrationNumber()))
-            throw new LicenseCodeAlreadyExistsException("registration Number already Exists in the Database");
+        {
+            String reason = "registration Number already Exists in the Database";
+            log.warn("Rule refused: {}", reason);
+            throw new LicenseCodeAlreadyExistsException(reason);
+        }
 
         if (dto.capacity() != null && (dto.capacity() < 1 || dto.capacity() > 8))
-            throw new LicenseCodeAlreadyExistsException("Capacity Should be between 1 to 8");
+        {
+            String reason = "Capacity Should be between 1 to 8";
+            log.warn("Rule refused: {}", reason);
+            throw new LicenseCodeAlreadyExistsException(reason);
+        }
 
         vehicleMapper.updateVehicle(dto, vehicle);
 
         Vehicle updated = vehicalRepository.save(vehicle);
 
+        log.info("Vehicle {} updated", updated.getId());
         return vehicleMapper.toResponse(updated);
     }
 
@@ -86,11 +106,12 @@ public class VehicalService {
                         new ResourcesNotFoundException("Vehicle not found"));
 
         if (tripRepository.existsByVehicle_Id(id)) {
-            throw new BusinessRuleException(
-                    "Cannot delete a vehicle that is associated with trips"
-            );
+            String reason = "Cannot delete a vehicle that is associated with trips";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         vehicalRepository.delete(vehicle);
+        log.info("Vehicle {} deleted", id);
     }
 }

@@ -1,6 +1,7 @@
 package ma.youcode.covoiturage.services;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ma.youcode.covoiturage.common.exception.EmailAlreadyExistsException;
 import ma.youcode.covoiturage.common.exception.LicenseCodeAlreadyExistsException;
 import ma.youcode.covoiturage.common.exception.ResourcesNotFoundException;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DriverService {
@@ -25,15 +27,20 @@ public class DriverService {
     @Transactional
     public DriverResponseDto addDriver(DriverRequestDto dto){
         if (profileService.emailExists(dto.email())){
-            throw new EmailAlreadyExistsException("Email already existe.");
+            String reason = "Email already existe.";
+            log.warn("Rule refused: {}", reason);
+            throw new EmailAlreadyExistsException(reason);
         }
 
         if (driverRepository.existsByLicenseNumber(dto.licenseNumber())){
-            throw new EmailAlreadyExistsException("License number already existe.");
+            String reason = "License number already existe.";
+            log.warn("Rule refused: {}", reason);
+            throw new EmailAlreadyExistsException(reason);
         }
 
         Driver driver = driverMapper.toEntity(dto);
         Driver created = driverRepository.save(driver);
+        log.info("Driver {} created", created.getId());
         return driverMapper.toResponse(created);
     }
 
@@ -57,17 +64,22 @@ public class DriverService {
                 .orElseThrow(()-> new ResourcesNotFoundException("Passenger not found with id: " + id));
 
         if (dto.email() != null && !dto.email().equals(driver.getEmail()) && profileService.emailExists(dto.email())) {
-            throw new EmailAlreadyExistsException("Email already exists.");
+            String reason = "Email already exists.";
+            log.warn("Rule refused: {}", reason);
+            throw new EmailAlreadyExistsException(reason);
         }
 
         if (dto.licenseNumber() != null && !dto.licenseNumber().equals(driver.getLicenseNumber()) && profileService.emailExists(dto.email())) {
-            throw new LicenseCodeAlreadyExistsException("License Number Already Exist");
+            String reason = "License Number Already Exist";
+            log.warn("Rule refused: {}", reason);
+            throw new LicenseCodeAlreadyExistsException(reason);
         }
 
         driverMapper.updateDriver(dto, driver);
 
         Driver updated = driverRepository.save(driver);
 
+        log.info("Driver {} updated", updated.getId());
         return driverMapper.toResponse(updated);
     }
 

@@ -1,6 +1,7 @@
 package ma.youcode.covoiturage.services;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ma.youcode.covoiturage.enums.Status;
 import ma.youcode.covoiturage.repositories.TripRepository;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class TripStatusScheduler {
@@ -25,9 +27,7 @@ public class TripStatusScheduler {
         );
 
         if (updatedTrips > 0) {
-            System.out.println(
-                    updatedTrips + " trips automatically marked as TERMINE"
-            );
+            log.info("{} trips automatically marked as TERMINE", updatedTrips);
         }
     }
 }

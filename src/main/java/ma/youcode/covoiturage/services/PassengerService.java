@@ -1,6 +1,7 @@
 package ma.youcode.covoiturage.services;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ma.youcode.covoiturage.common.exception.EmailAlreadyExistsException;
 import ma.youcode.covoiturage.common.exception.ResourcesNotFoundException;
 import ma.youcode.covoiturage.dto.requests.PassengerRequestDto;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PassengerService {
@@ -25,11 +27,14 @@ public class PassengerService {
     public PassengerResponseDto addPassenger(PassengerRequestDto dto){
 
         if (profileService.emailExists(dto.email())){
-            throw new EmailAlreadyExistsException("Email already existe.");
+            String reason = "Email already existe.";
+            log.warn("Rule refused: {}", reason);
+            throw new EmailAlreadyExistsException(reason);
         }
 
         Passenger passenger = passengerMapper.toEntity(dto);
         Passenger created = passengerRepository.save(passenger);
+        log.info("Passenger {} created", created.getId());
         return  passengerMapper.toResponse(created);
     }
 
@@ -54,13 +59,16 @@ public class PassengerService {
                 .orElseThrow(()-> new ResourcesNotFoundException("Passenger not found with id: " + id));
 
         if (dto.email() != null && !dto.email().equals(passenger.getEmail()) && profileService.emailExists(dto.email())) {
-            throw new EmailAlreadyExistsException("Email already exists.");
+            String reason = "Email already exists.";
+            log.warn("Rule refused: {}", reason);
+            throw new EmailAlreadyExistsException(reason);
         }
 
         passengerMapper.updatePassenger(dto, passenger);
 
         Passenger updated = passengerRepository.save(passenger);
 
+        log.info("Passenger {} updated", updated.getId());
         return passengerMapper.toResponse(updated);
     }
 
@@ -69,6 +77,15 @@ public class PassengerService {
         Passenger passenger = passengerRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new ResourcesNotFoundException("Passenger not found"));
         return passengerMapper.toResponse(passenger);
+    }
+
+
+    public List<Passenger> searchPassengers() {
+        List<Passenger> passengers = passengerRepository.findAll();
+
+        List<Passenger> withOlman = passengers.stream().filter(p -> p.getEmail().contains("oldman")).toList();
+
+        return withOlman;
     }
 
 }

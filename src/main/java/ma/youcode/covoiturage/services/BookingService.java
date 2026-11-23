@@ -1,6 +1,7 @@
 package ma.youcode.covoiturage.services;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ma.youcode.covoiturage.common.exception.BusinessRuleException;
 import ma.youcode.covoiturage.common.exception.ForbiddenException;
 import ma.youcode.covoiturage.common.exception.ResourcesNotFoundException;
@@ -18,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BookingService {
@@ -49,15 +51,16 @@ public class BookingService {
                 );
 
         if (alreadyBooked) {
-            throw new BusinessRuleException(
-                    "You already have an active booking for this trip"
-            );
+            String reason = "You already have an active booking for this trip";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         // 2. The trip must be published
         if (trip.getStatus() != Status.PUBLIE) {
-            throw new BusinessRuleException(
-                    "You cannot book a trip that is not published");
+            String reason = "You cannot book a trip that is not published";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         // 3. Retrieve boarding and alighting stops
@@ -72,14 +75,16 @@ public class BookingService {
         // 4. Both stops must belong to the selected trip
         if (boardingStop.getTrip().getId() != trip.getId()
                 || alightingStop.getTrip().getId() != trip.getId()) {
-            throw new BusinessRuleException(
-                    "Both stops must belong to the selected trip");
+            String reason = "Both stops must belong to the selected trip";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         // 5. Boarding must happen before alighting
         if (boardingStop.getOrderIndex() >= alightingStop.getOrderIndex()) {
-            throw new BusinessRuleException(
-                    "Boarding stop must come before alighting stop");
+            String reason = "Boarding stop must come before alighting stop";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         // 6. Calculate already occupied seats on the entire trip
@@ -96,10 +101,9 @@ public class BookingService {
 
 // 7. Check seat availability BEFORE changing trip status
         if (dto.numberOfSeats() > availableSeats) {
-            throw new BusinessRuleException(
-                    "Not enough available seats on this trip. Available: "
-                            + availableSeats
-            );
+            String reason = "Not enough available seats on this trip. Available: " + availableSeats;
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
 // 8. Calculate the segment price
@@ -129,8 +133,10 @@ public class BookingService {
         if (remainingSeats == 0) {
             trip.setStatus(Status.COMPLET);
             tripRepository.save(trip);
+            log.info("Trip {} is now COMPLET: no seats left", trip.getId());
         }
 
+        log.info("Booking {} created: passenger={}, trip={}, seats={}, total={}", savedBooking.getId(), passenger.getId(), trip.getId(), savedBooking.getNumberOfSeats(), savedBooking.getTotalAmount());
         return bookingMapper.toResponse(savedBooking);
     }
 
@@ -143,8 +149,9 @@ public class BookingService {
 
         // Only the passenger who made the booking can cancel it
         if (booking.getPassenger().getId() != passengerId) {
-            throw new ForbiddenException(
-                    "You cannot cancel another passenger's booking");
+            String reason = "You cannot cancel another passenger's booking";
+            log.warn("Rule refused: {}", reason);
+            throw new ForbiddenException(reason);
         }
 
         LocalDateTime departureTime = booking.getTrip()
@@ -153,16 +160,17 @@ public class BookingService {
                 .getDateTime();
 
         if (LocalDateTime.now().isAfter(departureTime.minusHours(24))) {
-            throw new BusinessRuleException(
-                    "Bookings can only be cancelled at least 24 hours before departure"
-            );
+            String reason = "Bookings can only be cancelled at least 24 hours before departure";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         // Only pending or confirmed bookings can be cancelled
         if (booking.getStatus() != BookingStatus.PENDING
                 && booking.getStatus() != BookingStatus.CONFIRMED) {
-            throw new BusinessRuleException(
-                    "This booking cannot be cancelled");
+            String reason = "This booking cannot be cancelled";
+            log.warn("Rule refused: {}", reason);
+            throw new BusinessRuleException(reason);
         }
 
         // Count occupied seats before cancelling the booking
@@ -189,8 +197,10 @@ public class BookingService {
 
             booking.getTrip().setStatus(Status.PUBLIE);
             tripRepository.save(booking.getTrip());
+            log.info("Trip {} is PUBLIE again: a seat was freed", booking.getTrip().getId());
         }
 
+        log.info("Booking {} cancelled by passenger {}", bookingId, passengerId);
         return bookingMapper.toResponse(cancelledBooking);
     }
 
@@ -203,8 +213,9 @@ public class BookingService {
 
         // Only the driver who owns this trip can view its bookings
         if (trip.getDriver().getId() != driverId) {
-            throw new ForbiddenException(
-                    "You can only view bookings for your own trips");
+            String reason = "You can only view bookings for your own trips";
+            log.warn("Rule refused: {}", reason);
+            throw new ForbiddenException(reason);
         }
 
         return bookingRepository.findByTrip_Id(tripId)

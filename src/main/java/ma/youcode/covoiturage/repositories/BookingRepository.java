@@ -32,4 +32,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             Long tripId,
             Collection<BookingStatus> statuses
     );
+
+
 }
